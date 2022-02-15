@@ -1,0 +1,5 @@
+.DS_Store
+bf
+*.o
+*.s
+result
