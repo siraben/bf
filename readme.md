@@ -11,6 +11,8 @@ $ nix run github:siraben/bf <(curl -s https://raw.githubusercontent.com/erikdubb
 ```
 
 ## Building
+With Nix, run `nix build github:siraben/bf`.
+
 ```ShellSession
 $ gcc -O2 -o bf bf.c
 ```
