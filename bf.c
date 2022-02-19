@@ -6,12 +6,19 @@
 
 int stack;
 uint8_t arr[30000] = {0};
-size_t dp = 0;
-size_t pc = 0;
+long dp = 0;
+long pc = 0;
 char *prog;
+// Jump table
+long *jmp_tbl;
+// Open file handler
+FILE *f;
+// Size of program
+long s;
 
 static void die(int i) {
   free(prog);
+  free(jmp_tbl);
   exit(i);
 }
 
@@ -26,20 +33,20 @@ static void pop() {
 }
 
 // Calculate size of a file
-static uint32_t calculate_size(FILE *file) {
+static long calculate_size(FILE *file) {
   fseek(file, 0L, SEEK_END);
-  uint32_t byteCnt = (uint32_t)ftell(file);
+  long byteCnt = (long)ftell(file);
   rewind(file);
   return byteCnt;
 }
 
 static void load_prog(FILE *file) {
   uint8_t tmp[1024];
-  size_t bytes_read = 0;
-  size_t acc = 0;
+  long bytes_read = 0;
+  long acc = 0;
 
   while ((bytes_read = fread(tmp, 1, sizeof(tmp), file)) > 0)
-    for (size_t i = 0; i < bytes_read; i++)
+    for (long i = 0; i < bytes_read; i++)
       prog[acc++] = tmp[i];
   rewind(file);
 }
@@ -90,11 +97,27 @@ static void find_opening_brace() {
   forward_pc();
 }
 
+static void compute_jmp_tbl() {
+  for (long i = 0; i < s; i++) {
+    pc = i;
+    long old = pc;
+    if (prog[i] == '[') {
+      push();
+      forward_pc();
+      find_closing_brace();
+    } else if (prog[i] == ']')  {
+      push();
+      backward_pc();
+      find_opening_brace();
+    }
+    jmp_tbl[old] = pc;
+  }
+  pc = 0;
+}
+
 static void lbrac() {
   if (arr[dp] == 0) {
-    push();
-    forward_pc();
-    find_closing_brace();
+    pc = jmp_tbl[pc];
   } else {
     forward_pc();
   }
@@ -102,9 +125,7 @@ static void lbrac() {
 
 static void rbrac() {
   if (arr[dp] != 0) {
-    push();
-    backward_pc();
-    find_opening_brace();
+    pc = jmp_tbl[pc];
   } else {
     forward_pc();
   }
@@ -161,15 +182,17 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   char *fn = argv[1];
-  FILE *f = fopen(fn, "rb");
+  f = fopen(fn, "rb");
   if (!f) {
     fprintf(stderr, "Unable to open %s for reading\n", fn);
     return -1;
   }
-  uint32_t s = calculate_size(f);
+  s = calculate_size(f);
   prog = calloc(s, sizeof(uint8_t));
+  jmp_tbl = calloc(s, sizeof(long));
   load_prog(f);
   fclose(f);
+  compute_jmp_tbl();
   interp();
   die(0);
 }
