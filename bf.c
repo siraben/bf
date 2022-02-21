@@ -220,7 +220,13 @@ static void interp() {
       forward_pc();
       break;
     case '[':
-      lbrac();
+      // Detect "[-]" and write 0 to dp
+      if (prog[pc + 1] == '-' && prog[pc + 2] == ']') {
+        arr[dp] = 0;
+        pc += 3;
+      } else {
+        lbrac();
+      }
       break;
     case ']':
       rbrac();
