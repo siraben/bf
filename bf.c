@@ -60,11 +60,6 @@ static void forward_dp() { dp = dp == 29999 ? 0 : dp + 1; }
 
 static void forward_pc() {
   pc++;
-  if (!prog[pc]) {
-    fprintf(stderr, "End of program\n");
-    fflush(stderr);
-    exit(1);
-  }
 }
 
 static void backward_pc() {
@@ -217,10 +212,10 @@ static void interp() {
       break;
     case '.':
       putchar(arr[dp]);
-      fflush(stdout);
       forward_pc();
       break;
     case ',':
+      fflush(stdout);
       arr[dp] = getc(stdin);
       forward_pc();
       break;
@@ -231,8 +226,8 @@ static void interp() {
       rbrac();
       break;
     case 0:
-      printf("End of program\n");
-      break;
+      printf("\nReached end of program\n");
+      return;
     default:
       forward_pc();
       break;
