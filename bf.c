@@ -11,6 +11,8 @@ long pc = 0;
 char *prog;
 // Jump table
 long *jmp_tbl;
+// Increment table
+long *inc_tbl;
 // Open file handler
 FILE *f;
 // Size of program
@@ -19,6 +21,7 @@ long s;
 static void die(int i) {
   free(prog);
   free(jmp_tbl);
+  free(inc_tbl);
   exit(i);
 }
 
@@ -105,12 +108,58 @@ static void compute_jmp_tbl() {
       push();
       forward_pc();
       find_closing_brace();
-    } else if (prog[i] == ']')  {
+    } else if (prog[i] == ']') {
       push();
       backward_pc();
       find_opening_brace();
     }
     jmp_tbl[old] = pc;
+  }
+  pc = 0;
+}
+
+// Compute increment table to optimize runs of + and -
+static void compute_inc_dec() {
+  for (long i = 0; i < s; i++) {
+    pc = i;
+    // If we encounter a + or -, we need to know how many times to increment
+    // or decrement
+    // Keep looping next instruction until we encounter a + or -
+    if (prog[i] == '+' || prog[i] == '-') {
+      // Keep track of the value of the increment
+      long inc = prog[i] == '+' ? 1 : -1;
+      long old = pc;
+      forward_pc();
+      while (prog[pc] == '+' || prog[pc] == '-') {
+        inc += prog[pc] == '+' ? 1 : -1;
+        forward_pc();
+      }
+      jmp_tbl[old] = pc;
+      inc_tbl[old] = inc;
+    }
+  }
+  pc = 0;
+}
+
+// Compute increment table to optimize runs of > and <
+static void compute_left_right() {
+  for (long i = 0; i < s; i++) {
+    pc = i;
+    // If we encounter a > or < we need to know how many times to increment
+    // or decrement
+    // Keep looping next instruction until we encounter a > or <
+    if (prog[i] == '>' || prog[i] == '<') {
+      // Keep track of the value of the increment
+      long inc = prog[i] == '>' ? 1 : -1;
+      long old = pc;
+      forward_pc();
+      while (prog[pc] == '>' || prog[pc] == '<') {
+        inc += prog[pc] == '>' ? 1 : -1;
+        forward_pc();
+      }
+      jmp_tbl[old] = pc;
+      inc_tbl[old] = inc;
+    }
   }
   pc = 0;
 }
@@ -131,25 +180,40 @@ static void rbrac() {
   }
 }
 
+// Interpret + or -
+static void inc_dec() {
+  // Use the increment table to determine the increment
+  long inc = inc_tbl[pc];
+  arr[dp] += inc;
+  // Use the jump table to determine the next instruction
+  pc = jmp_tbl[pc];
+}
+
+// Interpret > or <
+static void left_right() {
+  // Use the increment table to determine the increment and ensure dp is in
+  // range
+  long inc = inc_tbl[pc];
+  dp += inc;
+  if (dp < 0)
+    dp += 30000;
+  else if (dp > 29999)
+    dp %= 30000;
+  // Use the jump table to determine the next instruction
+  pc = jmp_tbl[pc];
+}
+
 static void interp() {
   while (1) {
     assert(!stack);
     switch (prog[pc]) {
     case '+':
-      arr[dp]++;
-      forward_pc();
-      break;
     case '-':
-      arr[dp]--;
-      forward_pc();
+      inc_dec();
       break;
     case '>':
-      forward_dp();
-      forward_pc();
-      break;
     case '<':
-      backward_dp();
-      forward_pc();
+      left_right();
       break;
     case '.':
       putchar(arr[dp]);
@@ -190,9 +254,12 @@ int main(int argc, char *argv[]) {
   s = calculate_size(f);
   prog = calloc(s, sizeof(uint8_t));
   jmp_tbl = calloc(s, sizeof(long));
+  inc_tbl = calloc(s, sizeof(long));
   load_prog(f);
   fclose(f);
   compute_jmp_tbl();
+  compute_inc_dec();
+  compute_left_right();
   interp();
   die(0);
 }
