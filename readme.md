@@ -2,7 +2,24 @@
 
 ![Mandelbrot set program](./mandel.png)
 
-This is an interpreter for Brainfuck I wrote in an evening in C.
+This is an interpreter for Brainfuck I initially wrote in an evening
+in C.  The interpreter is essentially as fast as it can be without
+resorting to JIT compilation, because the following optimizations were
+performed:
+
+- precomputing jump lengths between `[` and `]`
+- precomputing runs of `+`, `-`, `>`, `<`
+
+In terms of relative speedups, here's what my MacBookPro18,3 reports
+(optimizations are cumulative, so subsequent ones include previous
+ones).
+
+| Optimization     | Time to render mandelbrot set (s) |
+|------------------|-----------------------------------|
+| none             | 28.57                             |
+| precompute jumps | 15.25                             |
+| precompute runs  | 7.71                              |
+| no flush on .    | 6.49                              |
 
 See the Mandelbrot set with
 
