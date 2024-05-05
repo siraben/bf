@@ -253,7 +253,8 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   s = calculate_size(f);
-  prog = calloc(s, sizeof(uint8_t));
+  // Add 2 to account for look-ahead when running
+  prog = calloc(s+2, sizeof(uint8_t));
   jmp_tbl = calloc(s, sizeof(long));
   inc_tbl = calloc(s, sizeof(long));
   load_prog(f);
